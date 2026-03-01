@@ -22,6 +22,7 @@
 #define BUFFER             2048
 #define FICHIER_SAUVEGARDE "vote_data.txt"
 #define FICHIER_EXCEL      "resultats_vote.csv"
+#define FICHIER_RAPPORT    "rapport_final.txt"
 #define CSV_PATH           "users.csv"
 
 /* =========================================================
@@ -74,14 +75,37 @@ void afficherResultats(void);
 void afficherStatistiques(void);
 
 /* =========================================================
- * 4. PERSISTANCE DES DONNEES
+ * 4. NOUVELLES FONCTIONNALITES
+ * ========================================================= */
+/**
+ * @brief Affiche les resultats en barres ASCII avec pourcentages.
+ *   Candidat A [################  ] 16 voix (80%)
+ *   Candidat B [####              ]  4 voix (20%)
+ */
+void afficherBarresASCII(void);
+
+/**
+ * @brief Trouve et affiche le(s) gagnant(s) du scrutin.
+ *        Gere les cas d'egalite. Appele auto a la fermeture.
+ */
+void afficherGagnant(void);
+
+/**
+ * @brief Genere rapport_final.txt : date/heure, resultats,
+ *        gagnant, taux de participation, votes blancs.
+ *        Appele automatiquement a la fermeture du vote.
+ */
+void genererRapportFinal(void);
+
+/* =========================================================
+ * 5. PERSISTANCE DES DONNEES
  * ========================================================= */
 void sauvegarderDonnees(void);
 void chargerDonnees(void);
 void exporterVersExcel(void);
 
 /* =========================================================
- * 5. SERVEUR RESEAU (threads Windows)
+ * 6. SERVEUR RESEAU (threads Windows)
  * Protocole :
  *   Client -> "AUTH <username> <password>"
  *   Serveur -> "AUTH_OK" ou "AUTH_FAIL"
@@ -94,7 +118,7 @@ DWORD WINAPI threadAffichageTempsReel(LPVOID arg);
 void lancerServeurReseau(void);
 
 /* =========================================================
- * 6. GESTION DES COMPTES UTILISATEURS
+ * 7. GESTION DES COMPTES UTILISATEURS
  * ========================================================= */
 void menu_inscription_admin(void);
 void menu_changer_mdp(void);
@@ -104,12 +128,12 @@ void menu_lister(void);
 void menuGestionComptes(void);
 
 /* =========================================================
- * 7. MENU PRINCIPAL ADMINISTRATEUR
+ * 8. MENU PRINCIPAL ADMINISTRATEUR
  * ========================================================= */
 void menuServeur(void);
 
 /* =========================================================
- * 8. CONNEXION ADMINISTRATEUR
+ * 9. CONNEXION ADMINISTRATEUR
  * ========================================================= */
 int ecranConnexionAdmin(void);
 

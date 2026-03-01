@@ -18,7 +18,7 @@
 #include <locale.h>
 #include <winsock2.h>
 #include <windows.h>
-#include "auth.h"
+
 int main(void)
 {
     SetConsoleOutputCP(65001);
