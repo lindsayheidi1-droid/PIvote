@@ -19,19 +19,22 @@
 #include <winsock2.h>
 #include <windows.h>
 #include "auth.h"
+
 int main(void)
 {
-    SetConsoleOutputCP(65001);
-    SetConsoleCP(65001);
+    /* 1252 = Windows Latin-1 : support complet des accents é è à ç ù */
+    SetConsoleOutputCP(1252);
+    SetConsoleCP(1252);
     setlocale(LC_ALL, "");
-
     AuthStatus st = auth_init(CSV_PATH);
-    if (st != AUTH_OK) {
+    if (st != AUTH_OK)
+    {
         printf("Erreur d'initialisation du fichier utilisateurs (code=%d).\n", st);
         return 1;
     }
 
-    if (!ecranConnexionAdmin()) {
+    if (!ecranConnexionAdmin())
+    {
         printf("Impossible de se connecter. Fermeture.\n");
         system("pause");
         return 1;

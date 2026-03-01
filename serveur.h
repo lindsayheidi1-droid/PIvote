@@ -8,11 +8,11 @@
 
 #ifndef SERVEUR_H
 #define SERVEUR_H
-
 #include "auth.h"
 #include <winsock2.h>
 #include <windows.h>
 #include <stddef.h>
+#include <locale.h>
 
 /* =========================================================
  * CONSTANTES
@@ -22,7 +22,31 @@
 #define BUFFER             2048
 #define FICHIER_SAUVEGARDE "vote_data.txt"
 #define FICHIER_EXCEL      "resultats_vote.csv"
+#define FICHIER_RAPPORT    "rapport_final.txt"
 #define CSV_PATH           "users.csv"
+
+/* =========================================================
+ * NAVIGATION MENU (flèches + couleurs)
+ * ========================================================= */
+
+/**
+ * @brief Affiche le menu admin avec l'option courante surlignée en cyan.
+ * @param selection Index de l'option actuellement sélectionnée (0 = première).
+ */
+void afficherMenuNavigue(int selection);
+
+/**
+ * @brief Lance la navigation au clavier (flèches + Entrée).
+ *        Retourne le numéro de l'option choisie (comme avant : 1, 2, 3...).
+ * @return Numéro de l'option sélectionnée.
+ */
+int naviguerMenu(void);
+
+
+
+
+
+
 
 /* =========================================================
  * STRUCTURES
@@ -74,14 +98,37 @@ void afficherResultats(void);
 void afficherStatistiques(void);
 
 /* =========================================================
- * 4. PERSISTANCE DES DONNEES
+ * 4. NOUVELLES FONCTIONNALITES
+ * ========================================================= */
+/**
+ * @brief Affiche les resultats en barres ASCII avec pourcentages.
+ *   Candidat A [################  ] 16 voix (80%)
+ *   Candidat B [####              ]  4 voix (20%)
+ */
+void afficherBarresASCII(void);
+
+/**
+ * @brief Trouve et affiche le(s) gagnant(s) du scrutin.
+ *        Gere les cas d'egalite. Appele auto a la fermeture.
+ */
+void afficherGagnant(void);
+
+/**
+ * @brief Genere rapport_final.txt : date/heure, resultats,
+ *        gagnant, taux de participation, votes blancs.
+ *        Appele automatiquement a la fermeture du vote.
+ */
+void genererRapportFinal(void);
+
+/* =========================================================
+ * 5. PERSISTANCE DES DONNEES
  * ========================================================= */
 void sauvegarderDonnees(void);
 void chargerDonnees(void);
 void exporterVersExcel(void);
 
 /* =========================================================
- * 5. SERVEUR RESEAU (threads Windows)
+ * 6. SERVEUR RESEAU (threads Windows)
  * Protocole :
  *   Client -> "AUTH <username> <password>"
  *   Serveur -> "AUTH_OK" ou "AUTH_FAIL"
@@ -94,8 +141,14 @@ DWORD WINAPI threadAffichageTempsReel(LPVOID arg);
 void lancerServeurReseau(void);
 
 /* =========================================================
- * 6. GESTION DES COMPTES UTILISATEURS
+ * 7. GESTION DES COMPTES UTILISATEURS
  * ========================================================= */
+/**
+ * @brief Affiche le sous-menu gestion des comptes
+ *        avec l'option courante surlignée.
+ * @param sel Index de l'option sélectionnée.
+ */
+void afficherMenuGestionNavigue(int sel);
 void menu_inscription_admin(void);
 void menu_changer_mdp(void);
 void menu_reinitialiser_mdp(void);
@@ -104,12 +157,12 @@ void menu_lister(void);
 void menuGestionComptes(void);
 
 /* =========================================================
- * 7. MENU PRINCIPAL ADMINISTRATEUR
+ * 8. MENU PRINCIPAL ADMINISTRATEUR
  * ========================================================= */
 void menuServeur(void);
 
 /* =========================================================
- * 8. CONNEXION ADMINISTRATEUR
+ * 9. CONNEXION ADMINISTRATEUR
  * ========================================================= */
 int ecranConnexionAdmin(void);
 

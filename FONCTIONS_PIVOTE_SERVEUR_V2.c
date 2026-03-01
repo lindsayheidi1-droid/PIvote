@@ -6,12 +6,28 @@
  * gcc -std=c99 -Wall serveur_impl.c serveur_main.c auth.c -o serveur.exe -lws2_32
  */
 
+#include <conio.h>
 #include "serveur.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <winsock2.h>
 #include <windows.h>
+#include "auth.h"
+#include <locale.h>
+
+/* =========================================================
+ * COULEURS CONSOLE
+ * ========================================================= */
+#define COULEUR_NORMAL   7   /* Blanc sur fond noir  */
+#define COULEUR_SELEC   11   /* Cyan clair sur fond noir */
+#define COULEUR_TITRE    3   /* Cyan foncé */
+
+static void setCouleur(int couleur)
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), couleur);
+}
 
 
 #pragma comment(lib, "ws2_32.lib")
@@ -69,7 +85,7 @@ void ajouterElecteur(void)
     char username[AUTH_MAX_USERNAME + 1];
     char password[AUTH_MAX_PASSWORD + 1];
 
-    printf("ID numerique de l'electeur : ");
+    printf("ID numérique de l'électeur : ");
     scanf("%d", &e.id);
     vider_buffer_stdin();
 
@@ -110,7 +126,7 @@ void ajouterElecteur(void)
     e.username[AUTH_MAX_USERNAME] = '\0';
 
     electeurs[nbElecteurs++] = e;
-    printf("Electeur '%s' (login: %s) enregistre avec succes.\n", e.nom, username);
+    printf("Electeur '%s' (login: %s) enregistré avec succes.\n", e.nom, username);
 }
 
 void afficherElecteurs(void)
@@ -137,7 +153,7 @@ void ajouterCandidat(void)
     }
     c.voix = 0;
     candidats[nbCandidats++] = c;
-    printf("Candidat ajoute.\n");
+    printf("Candidat ajouté.\n");
 }
 
 void afficherCandidats(void)
@@ -180,6 +196,63 @@ void afficherStatistiques(void)
     }
     printf("Votants: %d / %d | Votes blancs: %d\n", v, nbElecteurs, b);
 }
+/* =========================================================
+ * 4. NOUVELLES FONCTIONNALITES
+ * ========================================================= */
+
+/*
+ * afficherBarresASCII()
+ * --------------------
+ * Affiche chaque candidat avec une barre de 20 caracteres '#'
+ * proportionnelle a son score, suivie du nombre de voix et
+ * du pourcentage.
+ *
+ * Exemple :
+ *   Alice   [################    ] 16 voix (80.0%)
+ *   Bob     [####                ]  4 voix (20.0%)
+ *   BLANC   [                    ]  0 voix  (0.0%)
+ */
+void afficherBarresASCII(void)
+{
+    if (nbCandidats == 0) {
+        printf("Aucun candidat enregistré.\n");
+        return;
+    }
+
+    /* Calcul du total des voix (candidats + blancs) */
+    int totalVoix = 0;
+    for (int i = 0; i < nbCandidats; i++)
+        totalVoix += candidats[i].voix;
+
+    int blancs = 0;
+    for (int i = 0; i < nbElecteurs; i++)
+        if (electeurs[i].vote_blanc) blancs++;
+    totalVoix += blancs;
+
+    /* Largeur de la barre */
+    int largeur = 20;
+
+    printf("\n");
+    for (int i = 0; i < nbCandidats; i++) {
+        double pct    = (totalVoix > 0) ? (100.0 * candidats[i].voix / totalVoix) : 0.0;
+        int    rempli = (totalVoix > 0) ? (largeur * candidats[i].voix / totalVoix) : 0;
+
+        printf("  %-15s [", candidats[i].nom);
+        for (int k = 0; k < largeur; k++)
+            printf("%c", k < rempli ? '#' : ' ');
+        printf("] %3d voix (%5.1f%%)\n", candidats[i].voix, pct);
+    }
+
+    /* Ligne votes blancs */
+    double pctBlanc  = (totalVoix > 0) ? (100.0 * blancs / totalVoix) : 0.0;
+    int    rempliBlanc = (totalVoix > 0) ? (largeur * blancs / totalVoix) : 0;
+    printf("  %-15s [", "VOTE BLANC");
+    for (int k = 0; k < largeur; k++)
+        printf("%c", k < rempliBlanc ? '#' : ' ');
+    printf("] %3d voix (%5.1f%%)\n", blancs, pctBlanc);
+
+    printf("\n  Total votes exprimés : %d\n", totalVoix);
+}
 
 /* =========================================================
  * 4. PERSISTANCE DES DONNEES
@@ -217,7 +290,7 @@ void chargerDonnees(void)
         fscanf(f, "%d %s %d",
                &candidats[i].id, candidats[i].nom, &candidats[i].voix);
     fclose(f);
-    printf(">> Donnees chargees.\n");
+    printf(">> Données chargées.\n");
 }
 
 void exporterVersExcel(void)
@@ -260,7 +333,7 @@ DWORD WINAPI threadServeurReseau(LPVOID arg)
         return 1;
     }
     listen(serveur, 5);
-    printf(">> Serveur reseau ACTIF sur le port %d.\n", PORT);
+    printf(">> Serveur réseau ACTIF sur le port %d.\n", PORT);
 
     while (1)
     {
@@ -374,7 +447,7 @@ DWORD WINAPI threadAffichageTempsReel(LPVOID arg)
         afficherResultats();
         printf("\n");
         afficherStatistiques();
-        printf("\n[INFO] Fichier Excel mis a jour automatiquement.\n");
+        printf("\n[INFO]:Fichier Excel mis à jour automatiquement.\n");
         printf("Appuie sur une touche du menu pour quitter...\n");
         Sleep(3000);
     }
@@ -386,12 +459,12 @@ void lancerServeurReseau(void)
     HANDLE thread = CreateThread(NULL, 0, threadServeurReseau, NULL, 0, NULL);
     if (!thread)
     {
-        printf("Erreur thread reseau.\n");
+        printf("Erreur thread réseau.\n");
         return;
     }
     affichageAutoActif = 1;
     CreateThread(NULL, 0, threadAffichageTempsReel, NULL, 0, NULL);
-    printf("Mode reseau actif. Appuyez sur 0 pour quitter proprement.\n");
+    printf("Mode réseau actif. Appuyez sur 0 pour quitter proprement.\n");
 }
 
 /* =========================================================
@@ -409,9 +482,9 @@ void menu_inscription_admin(void)
 
     AuthStatus st = auth_register_user(CSV_PATH, username, password, role);
     if (st == AUTH_OK)
-        printf("Utilisateur cree avec succes.\n");
+        printf("Utilisateur créé avec succes.\n");
     else if (st == AUTH_ERR_EXISTS)
-        printf("Erreur : identifiant deja existant.\n");
+        printf("Erreur : identifiant déjà existant.\n");
     else
         printf("Erreur creation (code=%d).\n", st);
 }
@@ -443,15 +516,15 @@ void menu_reinitialiser_mdp(void)
     char new_password[AUTH_MAX_PASSWORD + 1];
 
     printf("\n[REINITIALISATION MOT DE PASSE]\n");
-    printf("Reservee a l'administrateur (sans controle de l'ancien mdp).\n\n");
+    printf("Reservée a l'administrateur (sans controle de l'ancien mdp).\n\n");
 
-    lire_ligne_srv("Identifiant de l'electeur : ", username, sizeof(username));
+    lire_ligne_srv("Identifiant de l'électeur : ", username, sizeof(username));
     lire_ligne_srv("Nouveau mot de passe       : ", new_password, sizeof(new_password));
 
     /* NULL = reinitialisation forcee sans verifier l'ancien mot de passe */
     AuthStatus st = auth_change_password(CSV_PATH, username, NULL, new_password);
     if (st == AUTH_OK)
-        printf("Mot de passe de '%s' reinitialise.\n", username);
+        printf("Mot de passe de '%s' reinitialisé.\n", username);
     else if (st == AUTH_ERR_NOTFOUND)
         printf("Utilisateur inconnu.\n");
     else
@@ -465,7 +538,7 @@ void menu_activation(int activer)
 
     AuthStatus st = auth_set_active(CSV_PATH, username, activer);
     if (st == AUTH_OK)
-        printf("Compte %s %s.\n", username, activer ? "active" : "desactive");
+        printf("Compte %s %s.\n", username, activer ? "activé" : "désactivé");
     else if (st == AUTH_ERR_NOTFOUND)
         printf("Utilisateur inconnu.\n");
     else
@@ -489,51 +562,181 @@ void menu_lister(void)
     auth_free_user_list(users);
 }
 
-void menuGestionComptes(void)
+void afficherMenuGestionNavigue(int sel)
 {
-    int  choix;
-    char buf[32];
-    do
-    {
-        printf("\n=== Gestion des comptes ===\n");
-        printf("1. Creer un compte (admin/autre)\n");
-        printf("2. Changer un mot de passe\n");
-        printf("3. Activer un compte\n");
-        printf("4. Desactiver un compte\n");
-        printf("5. Lister les utilisateurs\n");
-        printf("6. Reinitialiser le mot de passe d'un electeur\n");
-        printf("0. Retour\n");
-        lire_ligne_srv("Choix : ", buf, sizeof(buf));
-        if (sscanf(buf, "%d", &choix) != 1) choix = -1;
-        switch (choix)
-        {
-        case 1:
-            menu_inscription_admin();
-            break;
-        case 2:
-            menu_changer_mdp();
-            break;
-        case 3:
-            menu_activation(1);
-            break;
-        case 4:
-            menu_activation(0);
-            break;
-        case 5:
-            menu_lister();
-            break;
-        case 6:
-            menu_reinitialiser_mdp();
-            break;
-        case 0:
-            break;
-        default:
-            printf("Choix invalide.\n");
-            break;
+    const char *options[] = {
+        "1. Créer un compte (admin/autre)",
+        "2. Changer un mot de passe",
+        "3. Activer un compte",
+        "4. Désactiver un compte",
+        "5. Lister les utilisateurs",
+        "6. Réinitialiser le mot de passe d'un électeur",
+        "0. Retour"
+    };
+    int nbOptions = 7;
+
+    system("cls");
+
+    setCouleur(12); /* Rouge — même style que le menu principal */
+    printf("\n  ===== GESTION DES COMPTES =====\n\n");
+
+    for (int i = 0; i < nbOptions; i++) {
+        if (i == sel) {
+            setCouleur(COULEUR_SELEC);
+            printf("  > %-50s <\n", options[i]);
+        } else {
+            setCouleur(COULEUR_NORMAL);
+            printf("    %-50s\n", options[i]);
         }
     }
-    while (choix != 0);
+
+    setCouleur(COULEUR_NORMAL);
+    printf("\n  [Flèches pour naviguer  |  Entrée pour valider]\n");
 }
+
+void menuGestionComptes(void)
+{
+    /* Table index -> numéro d'option réel */
+    static const int indexVersOptionGestion[] = {
+        1, 2, 3, 4, 5, 6, 0
+    };
+
+    int sel     = 0;
+    int nbItems = 7;
+    int choix   = -1;
+    int touche;
+
+    do {
+        afficherMenuGestionNavigue(sel);
+
+        /* Navigation flèches */
+        while (1) {
+            touche = _getch();
+            if (touche == 0 || touche == 224) {
+                touche = _getch();
+                if (touche == 72) {         /* Flèche HAUT */
+                    sel = (sel - 1 + nbItems) % nbItems;
+                    afficherMenuGestionNavigue(sel);
+                } else if (touche == 80) {  /* Flèche BAS */
+                    sel = (sel + 1) % nbItems;
+                    afficherMenuGestionNavigue(sel);
+                }
+            } else if (touche == 13) {      /* Entrée */
+                choix = indexVersOptionGestion[sel];
+                setCouleur(COULEUR_NORMAL);
+                system("cls");
+                break;
+            }
+        }
+
+        switch (choix) {
+            case 1: menu_inscription_admin(); break;
+            case 2: menu_changer_mdp();       break;
+            case 3: menu_activation(1);       break;
+            case 4: menu_activation(0);       break;
+            case 5: menu_lister();            break;
+            case 6: menu_reinitialiser_mdp(); break;
+            case 0: break;
+            default: break;
+        }
+
+        /* Pause après chaque action sauf Retour */
+        if (choix != 0) {
+            printf("\n  Appuyez sur une touche pour revenir...");
+            _getch();
+        }
+
+    } while (choix != 0);
+}
+
+/* =========================================================
+ * AFFICHAGE DU MENU AVEC OPTION SURLIGNÉE
+ * ========================================================= */
+void afficherMenuNavigue(int sel)
+{
+    #define COULEUR_TITRE   12   /* Rouge clair */
+
+    /* Labels des options — avec accents grâce au code page 1252 */
+    const char *options[] = {
+        "1.  Ajouter un électeur",
+        "2.  Afficher les électeurs",
+        "3.  Ajouter un candidat",
+        "4.  Afficher les candidats",
+        "5.  Ouvrir le vote",
+        "6.  Fermer le vote  [=> gagnant + rapport auto]",
+        "7.  Les résultats (texte)",
+        "8.  Les résultats (barres ASCII)",
+        "9.  Les statistiques",
+        "10. Lancer le mode RÉSEAU",
+        "11. Exporter vers Excel",
+        "12. Gestion des comptes",
+        "0.  Quitter ET RÉINITIALISER"
+    };
+    int nbOptions = 13;
+
+    system("cls");
+
+    setCouleur(COULEUR_TITRE);
+    printf("\n  ===== MENU PIVOTE ADMINISTRATEUR =====\n\n");
+
+    for (int i = 0; i < nbOptions; i++) {
+        if (i == sel) {
+            /* Option sélectionnée : cyan clair + indicateur > */
+            setCouleur(COULEUR_SELEC);
+            printf("  > %-48s <\n", options[i]);
+        } else {
+            setCouleur(COULEUR_NORMAL);
+            printf("    %-48s\n", options[i]);
+        }
+    }
+
+    setCouleur(COULEUR_NORMAL);
+    printf("\n  [Flèches pour naviguer  |  Entrée pour valider]\n");
+}
+
+/* =========================================================
+ * NAVIGATION AU CLAVIER (flèches + Entrée)
+ * ========================================================= */
+
+/* Table de correspondance : index dans le menu -> numéro d'option réel */
+static const int indexVersOption[] = {
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0
+};
+
+int naviguerMenu(void)
+{
+    int sel     = 0;   /* index courant dans la liste */
+    int nbItems = 13;  /* nombre total d'options */
+    int touche;
+
+    afficherMenuNavigue(sel);
+
+    while (1) {
+        touche = _getch();
+
+        /* Les flèches envoient 2 codes : 0 ou 224, puis le code réel */
+        if (touche == 0 || touche == 224) {
+            touche = _getch();
+
+            if (touche == 72) {          /* Flèche HAUT */
+                sel = (sel - 1 + nbItems) % nbItems;
+                afficherMenuNavigue(sel);
+            }
+            else if (touche == 80) {     /* Flèche BAS */
+                sel = (sel + 1) % nbItems;
+                afficherMenuNavigue(sel);
+            }
+        }
+        else if (touche == 13) {         /* Touche ENTRÉE */
+            setCouleur(COULEUR_NORMAL);
+            system("cls");
+            return indexVersOption[sel];
+        }
+    }
+}
+
+
+
 
 /* =========================================================
  * 7. MENU PRINCIPAL ADMINISTRATEUR
@@ -541,76 +744,45 @@ void menuGestionComptes(void)
 void menuServeur(void)
 {
     int choix;
-    do
-    {
-        printf("\n===== MENU PIVOTE ADMINISTRATEUR =====\n");
-        printf("1. Ajouter un electeur\n");
-        printf("2. Afficher les electeurs\n");
-        printf("3. Ajouter un candidat\n");
-        printf("4. Afficher les candidats\n");
-        printf("5. Ouvrir le vote\n");
-        printf("6. Fermer le vote\n");
-        printf("7. Les resultats\n");
-        printf("8. Les statistiques\n");
-        printf("9. Lancer le mode RESEAU\n");
-        printf("10. Exporter vers Excel\n");
-        printf("11. Gestion des comptes\n");
-        printf("0. Quitter ET REINITIALISER\n");
-        printf("Choix : ");
-        scanf("%d", &choix);
-        vider_buffer_stdin();
+    do {
+        /* Navigation avec flèches au lieu de scanf */
+        choix = naviguerMenu();
 
-        switch (choix)
-        {
-        case 1:
-            ajouterElecteur();
-            sauvegarderDonnees();
-            break;
-        case 2:
-            afficherElecteurs();
-            break;
-        case 3:
-            ajouterCandidat();
-            sauvegarderDonnees();
-            break;
-        case 4:
-            afficherCandidats();
-            break;
-        case 5:
-            ouvrirVote();
-            sauvegarderDonnees();
-            break;
-        case 6:
-            fermerVote();
-            sauvegarderDonnees();
-            break;
-        case 7:
-            afficherResultats();
-            break;
-        case 8:
-            afficherStatistiques();
-            break;
-        case 9:
-            lancerServeurReseau();
-            break;
-        case 10:
-            exporterVersExcel();
-            printf("Fichier Excel genere !\n");
-            break;
+        switch (choix) {
+        case 1:  ajouterElecteur();      sauvegarderDonnees(); break;
+        case 2:  afficherElecteurs();    break;
+        case 3:  ajouterCandidat();      sauvegarderDonnees(); break;
+        case 4:  afficherCandidats();    break;
+        case 5:  ouvrirVote();           sauvegarderDonnees(); break;
+        case 6:  fermerVote();           sauvegarderDonnees(); break;
+        case 7:  afficherResultats();    break;
+        case 8:  afficherBarresASCII();  break;
+        case 9:  afficherStatistiques(); break;
+        case 10: lancerServeurReseau();  break;
         case 11:
+            exporterVersExcel();
+            printf("Fichier Excel généré !\n");
+            break;
+        case 12:
             menuGestionComptes();
             break;
         case 0:
             affichageAutoActif = 0;
             remove(FICHIER_SAUVEGARDE);
-            printf(">> Session terminee. Fichiers de sauvegarde supprimes.\n");
+            printf(">> Session terminée. Fichiers de sauvegarde supprimés.\n");
             break;
         default:
             printf("Choix invalide.\n");
             break;
         }
-    }
-    while (choix != 0);
+
+        /* Pause après chaque action pour lire le résultat */
+        if (choix != 0 && choix != 10) {
+            printf("\n  Appuyez sur une touche pour revenir au menu...");
+            _getch();
+        }
+
+    } while (choix != 0);
 }
 
 /* =========================================================
